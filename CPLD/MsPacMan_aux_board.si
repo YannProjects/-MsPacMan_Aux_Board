@@ -1,0 +1,74 @@
+
+Revision 00 ;
+Designer Engineer ;
+Company  Owner ;
+Assembly None ;
+Location  ;
+Device   F1504ISPPLCC44; /* This sets the target to be a JTAG Programmed Atmel ATF1504AS in TQFP-44 */
+
+ORDER: i_clk, %5, i_resetn, %5, i_addr, %5, i_rfrshn, %5, cpu_addr, %2, overlay;
+
+VECTORS:
+
+$MSG "0x0001";
+C 0 '0000' 1 "0000" L
+$MSG "0x0002";
+C 0 '0000' 1 "0000" L
+$MSG "0x0003";
+C 0 '0000' 1 "0000" L
+$MSG "0x30C9";
+C 1 '0619' 1 "30C8" L
+$MSG "0x3FF8";
+C 1 '07FF' 1 "3FF8" H
+$MSG "0x008D";
+C 1 '0011' 1 "0088" H
+$MSG "0x008E";
+C 1 '0011' 1 "0088" H
+$MSG "0x008F";
+C 1 '0011' 1 "0088" H
+$MSG "0x0038";
+C 1 '0007' 1 "0038" L
+$MSG "0x30CA";
+C 1 '0619' 1 "30C8" L
+$MSG "0x30CB";
+C 1 '0619' 1 "30C8" L
+$MSG "0x3FF8";
+C 1 '07FF' 1 "3FF8" H
+$MSG "0x32F3";
+C 1 '065E' 1 "32F0" H
+$MSG "0x32F4";
+C 1 '065E' 1 "32F0" H
+$MSG "0x32F5";
+C 1 '065E' 1 "32F0" H
+$MSG "0x1600";
+C 1 '02C0' 1 "1600" L
+$MSG "0x32F3";
+C 1 '065E' 1 "32F0" L
+$MSG "0x32F4";
+C 1 '065E' 1 "32F0" L
+$MSG "0x32F5";
+C 1 '065E' 1 "32F0" L
+$MSG "0x3FF8";
+C 1 '07FF' 1 "3FF8" H
+
+ORDER: i_clk, %5, i_resetn, %5, i_addr, %2, rom_patched, %2, final_addr, %2, i_rfrshn, %2, o_jrfrshn, %2, o_A3p, o_A4p, o_A5p, o_A8p, o_A9p, o_A10p, %2, u5_bank_sel, %2, u6_bank_sel, %2, u7_bank_sel, %2, o_mspacman_flash_csn, %2, overlay;
+
+VECTORS:
+
+C 1 '07FF' **************** **************** 1 * ****** * * * * H
+C 1 '0598' "80D0" "80D0" 1 L LHLLLL H L L L *
+C 1 '07E9' "0000" "3F48" 0 L HLLHHH L L H L *
+C 1 '12F2' "0000" "9790" 1 L LHLHHH L H L L *
+C 1 '09CE' "0000" "4E70" 1 H LHHLHH L L L H *
+C 1 '059B' "80E0" "80E0" 1 L LLHLLL H L L L *
+/* Meme chose avec overlay=off */
+C 1 '2C0' **************** **************** 1 * ****** * * * * L
+C 1 '057E' "81D0" "81D0" 1 H LHLHLL H L L H *
+C 1 '0601' "0000" "3008" 1 H HLLLLL L L H H *
+/* Overlay ON de nouveau */
+C 1 '07FF' **************** **************** 1 * ****** * * * * H
+C 1 '0598' "80D0" "80D0" 1 L LHLLLL H L L L *
+C 1 '07E9' "0000" "3F48" 0 L HLLHHH L L H L *
+C 1 '12F2' "0000" "9790" 1 L LHLHHH L H L L *
+C 1 '09CE' "0000" "4E70" 1 H LHHLHH L L L H *
+C 1 '059B' "80E0" "80E0" 1 L LLHLLL H L L L *

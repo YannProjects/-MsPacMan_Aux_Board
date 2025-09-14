@@ -1,0 +1,177 @@
+Name     MsPacman auxiliary board CPLD;
+PartNo   00 ;
+Date     14 / Septembre / 2025;
+Revision 00 ;
+Designer Engineer ;
+Company  Owner ;
+Assembly None ;
+Location  ;
+Device   F1504ISPPLCC44; /* This sets the target to be a JTAG Programmed Atmel ATF1504AS in TQFP-44 */
+
+
+//The statements here are sent to the Atmel Fitter:
+PROPERTY ATMEL { jtag=on }; /* Forgetting to set this may make your device extremely difficult to reprogram if you are relying on pure JTAG to program it */
+PROPERTY ATMEL { TMS_pullup=on };
+PROPERTY ATMEL { TDI_pullup=on };
+PROPERTY ATMEL { Verilog_sim=on };
+PROPERTY ATMEL { out_edif=on };
+PROPERTY ATMEL { Preassign=keep };
+
+
+/* *************** INPUT PINS *********************/
+PIN = [i_addr12..0];
+PIN = i_clk;
+PIN = i_rfrshn;
+/* PIN = i_mreqn; => Inutile car la memoire flash contient aussi une entree OENeg en plus du CENeg */
+PIN = i_resetn;
+
+/* *************** OUTPUT PINS ********************/
+PIN = o_A3p;
+PIN = o_A4p;
+PIN = o_A5p;
+PIN = o_A8p;
+PIN = o_A9p;
+PIN = o_A10p;
+PIN = o_jrfrshn;
+PIN = o_mspacman_flash_csn;
+PIN = [o_mspacman_bank_sel0..1];
+PIN = o_led;
+
+FIELD i_addr = [i_addr12..0];
+FIELD cpu_addr = [cpu_addr15..0];
+FIELD final_addr = [final_addr15..0];
+FIELD rom_patched = [rom_patched15..0];
+
+PINNODE = patch_match;
+
+PINNODE = OVL;
+/* *************** FIELD DEFINITIONS *************** */
+PINNODE = C0..C19;
+PINNODE = CE0..CE19;
+
+cpu_addr = [i_addr12..0,'b'0,'b'0,'b'0];
+
+/* Gestion du bit d'overlay
+   Un acces aux adressses ci-dessous desactive le decodage de la carte auxiliaire
+   et seul le code original PacMan est accessible. */
+
+/* Latch overlay
+ Overlay ON si 0x3FF8
+ D'apres le chapitre "Indexed Variable Bit Fields and Equality" de la doc. CUPL_USERS_GUIDE.pdf, lorsqe que l'on defini
+ un champ de bits sous la forme 15..3, l'operateur de comparaison ":" opere sur 32 bits en comparant les bits aux index 15..3.
+ Il faut donc rester sur des mots de 16 bits avec les bits 2..0 = '000'
+ */
+overlay_on = cpu_addr:'h'3FF8;
+/* Overlay OFF si 0x0038, 0x03B0, 0x1600, 0x2120, 0x3FF0, 0x8000, 0x97F0 */
+overlay_off = (cpu_addr:'h'0038) # (cpu_addr:'h'03B0) # (cpu_addr:'h'1600) # (cpu_addr:'h'2120) #
+              (cpu_addr:'h'3FF0) # (cpu_addr:'h'8000) # (cpu_addr:'h'97F0);
+
+OVL.CK = i_clk;
+OVL.ce = 'b'1;
+OVL.J = overlay_on;
+OVL.K = !i_resetn # overlay_off;
+overlay = OVL;
+
+/* Zone de patch */
+
+Table cpu_addr => rom_patched
+{
+   'h'0410 => 'h'8008;
+   'h'08E0 => 'h'81D8;
+   'h'0A30 => 'h'8118;
+   'h'0BD0 => 'h'80D8;
+   'h'0C20 => 'h'8120;
+   'h'0E58 => 'h'8168;
+   'h'0EA8 => 'h'8198;
+
+   'h'1000 => 'h'8020;
+   'h'1008 => 'h'8010;
+   'h'1288 => 'h'8098;
+   'h'1348 => 'h'8048;
+   'h'1688 => 'h'8088;
+   'h'16B0 => 'h'8188;
+   'h'16D8 => 'h'80C8;
+   'h'16F8 => 'h'81C8;
+   'h'19A8 => 'h'80A8;
+   'h'19B8 => 'h'81A8;
+
+   'h'2060 => 'h'8148;
+   'h'2108 => 'h'8018;
+   'h'21A0 => 'h'81A0;
+   'h'2298 => 'h'80A0;
+   'h'23E0 => 'h'80E8;
+   'h'2418 => 'h'8000;
+   'h'2448 => 'h'8058;
+   'h'2470 => 'h'8140;
+   'h'2488 => 'h'8080;
+   'h'24B0 => 'h'8180;
+   'h'24D8 => 'h'80C0;
+   'h'24F8 => 'h'81C0;
+   'h'2748 => 'h'8050;
+   'h'2780 => 'h'8090;
+   'h'27B8 => 'h'8190;
+   'h'2800 => 'h'8028;
+   'h'2B20 => 'h'8100;
+   'h'2B30 => 'h'8110;
+   'h'2BF0 => 'h'81D0;
+   'h'2CC0 => 'h'80D0;
+   'h'2CD8 => 'h'80E0;
+   'h'2CF0 => 'h'81E0;
+   'h'2D60 => 'h'8160;
+}
+
+patch_match = !(rom_patched:'h'0000);
+
+/* Est-ce qu'il faut appliquer un patch ?  */
+final_addr = (cpu_addr & !patch_match) # (rom_patched & patch_match);
+
+/* Les ROM U5/U6/U7 sont placees dans une memoire flash unique.
+ Les adresses A12/A13 de la memoire flash servent de selection aux ROM U5, U6, U7: */
+/* addr = 0x8000-0x87FF, no xlate (physical ROM hi 0000-07FF), decrypt u5 */
+u5_bank_sel = patch_match # (cpu_addr15 & !cpu_addr14 & !cpu_addr13 & !cpu_addr12 & !cpu_addr11);
+
+/* addr = 0x8800-0x8FFF, xlate to 0x9800-0x9FFF (physical ROM hi 1800-1FFF), decrypt half of u6 */
+/* addr = 0x9000-0x97FF, no xlate (physical ROM hi 1000-17FF), decrypt half of u6 */
+u6_bank_sel = (cpu_addr15 & !cpu_addr14 & !cpu_addr13 & cpu_addr12);
+/* addr = 0x3000-0x37FF, xlate to 0xB000-0xB7FF (physical ROM hi 2000-27FF), decrypt half of u7
+   addr = 0x3800-0x3FFF, xlate to 0xB800-0xBFFF (physical ROM hi 2800-2FFF), decrypt half of u7 */
+/*u7_bank_sel = (final_addr:'b'00110);*/
+u7_bank_sel = (!cpu_addr15 & !cpu_addr14 & cpu_addr13 & cpu_addr12);
+
+o_mspacman_bank_sel0 = u6_bank_sel;
+o_mspacman_bank_sel1 = u7_bank_sel;
+o_mspacman_flash_csn = !(u5_bank_sel # u6_bank_sel # u7_bank_sel) # (!overlay);
+/* Sur le controleur de bus PacMan le signal RFRSH=1 est utilise comme chip select s'il est a 1
+   Je pense qu'il doit donc etre a 0 si on accede aux ROM auxiliaires MsPacMan pour desactiver l'acces 
+   au controleur de bus dans ce cas, sinon on recopie i_rfrshn */
+o_jrfrshn = (overlay & (o_mspacman_flash_csn & i_rfrshn)) # (!overlay & i_rfrshn);
+
+/* Si on accede a U5, on change l'adressage de A3, A5, A6, A8, A9, A10 */
+o_A3p = final_addr3;
+o_A4p = final_addr4;
+o_A5p = final_addr5;
+o_A8p = final_addr8;
+o_A9p = final_addr9;
+o_A10p = final_addr10;
+
+/****************************/
+/* LED de test pour le CPLD */
+/****************************/
+/* Frequence = 3 MHz => Periode LED = 350 ms */
+C0.CK = i_clk;
+C0.ce =  'b'1;
+C0.AR = (!i_resetn);
+C0.D = !C0;
+
+CE0 = 'b'1;
+$REPEAT i=[1..19] 
+   /* Apparement l'horloge est commune pour toutes les macro cells du CPLD (?). Du coup, pour faire les diviseurs
+    par 2 j'utiliser l'entree CE pour valider le toggle si Q0 & Q1 pour le premier etage, Q0 & Q1 & Q2 pour le second,... */
+   C{i}.CK = i_clk;
+   CE{i} = C{i-1} & CE{i-1};
+   C{i}.ce = CE{i};
+   C{i}.AR = (!i_resetn);
+   C{i}.D = !(C{i});
+$REPEND
+
+ o_led = C19;
